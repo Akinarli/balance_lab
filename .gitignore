@@ -1,3 +1,7 @@
 node_modules/
 .DS_Store
 Thumbs.db
+jdk17/
+android/app/release/
+*.apk
+*.aab

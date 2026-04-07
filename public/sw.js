@@ -1,4 +1,4 @@
-const CACHE_NAME = 'balance-lab-cache-v2';
+const CACHE_NAME = 'balance-lab-cache-v3';
 const urlsToCache = [
   './',
   './index.html',

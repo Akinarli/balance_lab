@@ -100,7 +100,8 @@ background:rgba(6,182,212,.15);border:1px solid rgba(103,232,249,.3);display:non
 @keyframes bnc{0%{transform:scale(.82)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
 @keyframes idleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 /* Effects */
-.ptcl{position:absolute;border-radius:50%;pointer-events:none;z-index:200}
+.ptcl{display:none}
+#cvs{position:absolute;inset:0;pointer-events:none;z-index:200}
 #sflash{position:fixed;inset:0;pointer-events:none;z-index:500;opacity:0;transition:opacity .06s}
 .flt{position:absolute;pointer-events:none;z-index:300;font-family:'JetBrains Mono',monospace;
 font-weight:800;white-space:nowrap;animation:fltUp 1s ease-out forwards}
@@ -222,7 +223,7 @@ box-shadow:0 4px 25px rgba(34,197,94,.35)}
   <div id="fever-lbl">🔥 FEVER</div>
  </div>
 </div>
-<div id="board-wrap"><div id="board"><div id="board-bg"></div><div class="fever-bg" id="fever-bg"></div>
+<div id="board-wrap"><div id="board"><div id="board-bg"></div><canvas id="cvs"></canvas><div class="fever-bg" id="fever-bg"></div>
 <div id="board-full"><div class="bf-txt">⚠ BOARD FULL</div><div class="bf-time" id="bf-cd">5</div><div class="bf-txt">CLEAR BLOCKS!</div></div>
 <div id="idle-warn">⚠ IDLE — SCORE MELTING!</div>
 <div class="freeze-timer" id="freeze-tmr">🧊 FREEZE 8s</div>
@@ -279,13 +280,14 @@ const $=id=>document.getElementById(id);
 const board=$('board'),scE=$('sc'),tmE=$('tm'),wvE=$('wv'),phvE=$('phv'),phpE=$('php'),
 clE=$('combo-lbl'),cfE=$('combo-fill'),flE=$('fever-lbl'),fbgE=$('fever-bg'),
 sflash=$('sflash'),dbrd=$('dbrd'),goE=$('go'),bfE=$('board-full'),bfcdE=$('bf-cd'),
-idleW=$('idle-warn'),goBest=$('go-best'),goTip=$('go-tip'),freezeTmr=$('freeze-tmr');
+idleW=$('idle-warn'),goBest=$('go-best'),goTip=$('go-tip'),freezeTmr=$('freeze-tmr'),
+cvs=$('cvs'),ctx_c=cvs.getContext('2d');
 
 let blocks=[],pH=7,score=0,combo=0,maxCombo=0,totalRx=0,gameTime=0,isOver=false,
 best=parseInt(localStorage.getItem('phLab2')||'0'),idCtr=0,spawnTmr=0,lastFrame=0,
 lastRxTime=0,comboDecay=0,fever=false,feverEnd=0,wave=1,waveTime=0,
 neutralTime=0,boredomFired=false,lastSpawnTypes=[],audioCtx=null,
-playerSpeed=[],achievements=new Set(),wildTimer=0;
+playerSpeed=[],achievements=new Set(),wildTimer=0,particles=[];
 const drag={blk:null,sx:0,sy:0,ox:0,oy:0};
 // AI Director state
 const ai={aggression:.3,lastPlayerAction:0,idleTime:0,burstCooldown:0,
@@ -330,14 +332,32 @@ g.gain.exponentialRampToValueAtTime(.06,n+.01);g.gain.exponentialRampToValueAtTi
 o.connect(g).connect(c.destination);o.start(n);o.stop(n+.16)}catch(e){}}
 
 // === PARTICLES ===
+function resizeCvs(){
+  const b=board.getBoundingClientRect();
+  cvs.width=b.width*devicePixelRatio;cvs.height=b.height*devicePixelRatio;
+  ctx_c.resetTransform();ctx_c.scale(devicePixelRatio,devicePixelRatio);
+}
+window.addEventListener('resize',resizeCvs);
+
 function burst(x,y,color,cnt=14){
-for(let i=0;i<cnt;i++){const p=document.createElement('div');p.className='ptcl';
-const sz=2+Math.random()*6,a=Math.random()*Math.PI*2,sp=50+Math.random()*100;
-Object.assign(p.style,{left:x+'px',top:y+'px',width:sz+'px',height:sz+'px',background:color});
-board.appendChild(p);const dx=Math.cos(a)*sp,dy=Math.sin(a)*sp;let t=0;
-const run=()=>{t+=16;const pr=Math.min(t/400,1);const e=1-Math.pow(1-pr,3);
-p.style.left=(x+dx*e)+'px';p.style.top=(y+dy*e-25*e)+'px';p.style.opacity=String(1-pr);
-if(pr<1)requestAnimationFrame(run);else p.remove()};requestAnimationFrame(run)}}
+  for(let i=0;i<cnt;i++){
+    const a=Math.random()*Math.PI*2,sp=50+Math.random()*100;
+    particles.push({x,y,color,sz:2+Math.random()*6,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,t:0});
+  }
+}
+function updateParticles(dt){
+  ctx_c.clearRect(0,0,cvs.width,cvs.height);
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];p.t+=dt;
+    const pr=Math.min(p.t/0.4,1);
+    const e=1-Math.pow(1-pr,3);
+    const curX=p.x+p.vx*e,curY=p.y+p.vy*e-25*e;
+    ctx_c.globalAlpha=1-pr;ctx_c.fillStyle=p.color;
+    ctx_c.beginPath();ctx_c.arc(curX,curY,p.sz/2,0,Math.PI*2);ctx_c.fill();
+    if(pr>=1)particles.splice(i,1);
+  }
+  ctx_c.globalAlpha=1;
+}
 function flash(c){sflash.style.background=c;sflash.style.opacity='.3';setTimeout(()=>sflash.style.opacity='0',100)}
 function flt(x,y,t,c,sz=13){const e=document.createElement('div');e.className='flt';e.textContent=t;
 Object.assign(e.style,{left:x+'px',top:y+'px',color:c,fontSize:sz+'px'});
@@ -655,7 +675,7 @@ if(rx.type==='freeze'){
 updateStreak(true);
 checkCloseCall();
 checkNewBest();
-setTimeout(()=>checkPerfectClear(),350);
+setTimeout(()=>checkPerfectClear(),500);
 // Achievements
 if(totalRx===1)achieve('first','First Reaction!');
 if(combo>=5)achieve('combo5','Combo King x5!');
@@ -667,6 +687,54 @@ if(pH<=0||pH>=14)setTimeout(()=>gameOver(),300);
 // AI + idle reset
 ai.lastPlayerAction=now;idleTime=0;idleW.style.display='none';
 if(combo>=3)ai.aggression=Math.min(1,ai.aggression+.05)}
+
+
+// === UI ===
+function updateUI(){
+scE.textContent=score;
+phpE.style.left=(pH/14*100)+'%';
+phvE.textContent='pH '+pH.toFixed(1);
+phvE.style.color=pH<7?'#ef4444':pH>7?'#3b82f6':'#22c55e';
+// Combo bar
+const pct=Math.max(0,comboDecay/COMBO_WINDOW*100);
+cfE.style.width=pct+'%';
+if(combo>=FEVER_THRESHOLD){cfE.style.background='var(--gold)';clE.style.color='var(--gold)'}
+else if(combo>=3){cfE.style.background='var(--purple)';clE.style.color='var(--purple)'}
+else{cfE.style.background='var(--neut)';clE.style.color='var(--neut)'}
+clE.textContent='x'+Math.max(1,combo);
+if(combo>=3)clE.style.transform='scale(1.2)';else clE.style.transform='scale(1)';
+// Board glow
+if(pH<=2)board.style.boxShadow='inset 0 0 50px rgba(239,68,68,.25)';
+else if(pH>=12)board.style.boxShadow='inset 0 0 50px rgba(59,130,246,.25)';
+else if(fever)board.style.boxShadow='inset 0 0 30px rgba(245,158,11,.12)';
+else board.style.boxShadow='';
+// Danger overlay
+if(pH<=1||pH>=13){dbrd.className='dng-'+(pH<=1?'a':'b')+' dng-crit'}
+else if(pH<=2){dbrd.className='dng-a'}
+else if(pH>=12){dbrd.className='dng-b'}
+else{dbrd.className='';dbrd.style.opacity='0'}}
+function gameOver(cause){if(isOver)return;isOver=true;sndGO();vib([200,100,200,100,400]);stopBGM();
+const isNewBest=score>best;
+if(isNewBest){best=score;localStorage.setItem('phLab2',String(best))}
+const titles={acid:'Acid Meltdown!',base:'Base Overload!',full:'Board Overflow!'}
+const subs={acid:'pH dropped to 0!',base:'pH hit 14!',full:'Too many blocks — lab exploded!'}
+const c2=cause||(pH<=0?'acid':'base');
+$('got').textContent=titles[c2]||'Game Over!';
+$('gosub').textContent=subs[c2]||'';
+$('gos').textContent=score;$('gotm').textContent=fmtTime(gameTime);
+$('goc').textContent='x'+maxCombo;$('gor').textContent=totalRx;
+goBest.style.display=isNewBest?'block':'none';
+goTip.textContent=best>0&&!isNewBest?'Best: '+best+' — beat it!':isNewBest?'You set a new record!':'';
+const s=score>=1500?'★★★':score>=600?'★★':score>0?'★':'☆';
+$('gostars').textContent=s;
+bfE.classList.remove('show');
+goE.classList.add('show')}
+
+// === GAME LOOP ===
+function loop(ts){
+if(isOver)return;
+const dt=lastFrame?Math.min((ts-lastFrame)/1000,.3):0;
+lastFrame=ts;gameTime+=dt;tmE.textContent=fmtTime(gameTime);
 
 // === PHYSICS ENGINE: MAGNETISM & DISTRIBUTION ===
 const br=board.getBoundingClientRect();
@@ -729,52 +797,6 @@ for(let i=0;i<blocks.length;i++){
     }
   }
 }
-// === UI ===
-function updateUI(){
-scE.textContent=score;
-phpE.style.left=(pH/14*100)+'%';
-phvE.textContent='pH '+pH.toFixed(1);
-phvE.style.color=pH<7?'#ef4444':pH>7?'#3b82f6':'#22c55e';
-// Combo bar
-const pct=Math.max(0,comboDecay/COMBO_WINDOW*100);
-cfE.style.width=pct+'%';
-if(combo>=FEVER_THRESHOLD){cfE.style.background='var(--gold)';clE.style.color='var(--gold)'}
-else if(combo>=3){cfE.style.background='var(--purple)';clE.style.color='var(--purple)'}
-else{cfE.style.background='var(--neut)';clE.style.color='var(--neut)'}
-clE.textContent='x'+Math.max(1,combo);
-if(combo>=3)clE.style.transform='scale(1.2)';else clE.style.transform='scale(1)';
-// Board glow
-if(pH<=2)board.style.boxShadow='inset 0 0 50px rgba(239,68,68,.25)';
-else if(pH>=12)board.style.boxShadow='inset 0 0 50px rgba(59,130,246,.25)';
-else if(fever)board.style.boxShadow='inset 0 0 30px rgba(245,158,11,.12)';
-else board.style.boxShadow='';
-// Danger overlay
-if(pH<=1||pH>=13){dbrd.className='dng-'+(pH<=1?'a':'b')+' dng-crit'}
-else if(pH<=2){dbrd.className='dng-a'}
-else if(pH>=12){dbrd.className='dng-b'}
-else{dbrd.className='';dbrd.style.opacity='0'}}
-function gameOver(cause){if(isOver)return;isOver=true;sndGO();vib([200,100,200,100,400]);stopBGM();
-const isNewBest=score>best;
-if(isNewBest){best=score;localStorage.setItem('phLab2',String(best))}
-const titles={acid:'Acid Meltdown!',base:'Base Overload!',full:'Board Overflow!'}
-const subs={acid:'pH dropped to 0!',base:'pH hit 14!',full:'Too many blocks — lab exploded!'}
-const c2=cause||(pH<=0?'acid':'base');
-$('got').textContent=titles[c2]||'Game Over!';
-$('gosub').textContent=subs[c2]||'';
-$('gos').textContent=score;$('gotm').textContent=fmtTime(gameTime);
-$('goc').textContent='x'+maxCombo;$('gor').textContent=totalRx;
-goBest.style.display=isNewBest?'block':'none';
-goTip.textContent=best>0&&!isNewBest?'Best: '+best+' — beat it!':isNewBest?'You set a new record!':'';
-const s=score>=1500?'★★★':score>=600?'★★':score>0?'★':'☆';
-$('gostars').textContent=s;
-bfE.classList.remove('show');
-goE.classList.add('show')}
-
-// === GAME LOOP ===
-function loop(ts){
-if(isOver)return;
-const dt=lastFrame?Math.min((ts-lastFrame)/1000,.3):0;
-lastFrame=ts;gameTime+=dt;tmE.textContent=fmtTime(gameTime);
 // Wave progression
 waveTime+=dt;
 if(waveTime>=45){waveTime=0;wave++;wvE.textContent=wave;
@@ -854,10 +876,13 @@ if(gameTime>=180&&!achievements.has('surv180'))achieve('surv180','3 Min Survivor
 // Combo bar visual
 const pct2=Math.max(0,comboDecay/COMBO_WINDOW*100);
 cfE.style.width=pct2+'%';
+updateParticles(dt);
 requestAnimationFrame(loop)}
 
 // === INIT ===
 function init(){
+resizeCvs();
+particles=[];
 blocks.forEach(b=>b.el.remove());blocks=[];
 // Remove leftover effects
 board.querySelectorAll('.ptcl,.flt,.sfx-txt,.lightning').forEach(e=>e.remove());
