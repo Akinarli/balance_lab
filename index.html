@@ -680,16 +680,18 @@ for(let i=0;i<blocks.length;i++){
       if(d<160){
         const attract=(chA*chB)<0;
         const distFactor=Math.max(0,1-(d/160));
-        const curve=distFactor*distFactor;
-        
         let nx=(b1.x-b2.x)/d,ny=(b1.y-b2.y)/d;
-        // Direction vector from b2 to b1
         if(d<5){nx=(Math.random()-.5)*2;ny=(Math.random()-.5)*2;}
         
-        // Attract gently (60px/s), Repel firmly (250px/s)
-        // If attract, b1 should move towards b2 (-nx), and b2 towards b1 (+nx)
-        // We calculate 'push' value. If attract, push is negative (they move opposite to nx/ny)
-        const force=(attract?-60:250)*curve*dt;
+        let force=0;
+        if(attract){
+           force=-70*distFactor*dt; // Gentle attract
+        }else{
+           let repelPower=400;
+           if(d<85) repelPower=2500; // Hard bounce when they try to touch
+           if(d<45) repelPower=9000; // Extreme bounce if perfectly overlapping
+           force=repelPower*distFactor*dt;
+        }
         
         if(drag.blk!==b1){
           b1.x=clamp(b1.x+nx*force,0,br.width-BS);
