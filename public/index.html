@@ -571,16 +571,7 @@ drag.blk.el.style.left=nx+'px';drag.blk.el.style.top=ny+'px';
 blocks.forEach(ob=>{if(ob===drag.blk)return;
 const d=dist(drag.blk,ob),isValid=!!getRx(drag.blk.type,ob.type);
 ob.el.classList.toggle('valid-t',d<CD&&isValid);
-// === ELECTROSTATIC MAGNETISM ===
-const charges={H:1,Na:1,OH:-1,Cl:-1};
-const chA=charges[drag.blk.type]||0,chB=charges[ob.type]||0;
-if(chA!==0&&chB!==0&&d<140&&d>5){
-  const attract=(chA*chB)<0;
-  const force=attract?0.025:-0.035; // attract gently, repel firmly
-  const dx=(drag.blk.x-ob.x)*force,dy=(drag.blk.y-ob.y)*force;
-  ob.x=clamp(ob.x+dx,0,br.width-BS);
-  ob.y=clamp(ob.y+dy,0,br.height-BS);
-  ob.el.style.left=ob.x+'px';ob.el.style.top=ob.y+'px'}})}
+})}
 function onUp(e){if(!drag.blk)return;
 const b=drag.blk;b.el.classList.remove('dragging');
 document.removeEventListener('pointermove',onMove);
@@ -677,6 +668,23 @@ if(pH<=0||pH>=14)setTimeout(()=>gameOver(),300);
 ai.lastPlayerAction=now;idleTime=0;idleW.style.display='none';
 if(combo>=3)ai.aggression=Math.min(1,ai.aggression+.05)}
 
+// === ELECTROSTATIC MAGNETISM (CONTINUOUS) ===
+if(drag.blk){
+  const br=board.getBoundingClientRect();
+  const charges={H:1,Na:1,OH:-1,Cl:-1};
+  const chA=charges[drag.blk.type]||0;
+  if(chA!==0){
+    blocks.forEach(ob=>{if(ob===drag.blk||ob.el.classList.contains('idle'))return;
+      const chB=charges[ob.type]||0;
+      if(chB!==0){const d=dist(drag.blk,ob);
+        if(d<160&&d>15){
+          const attract=(chA*chB)<0;
+          const nx=(drag.blk.x-ob.x)/d,ny=(drag.blk.y-ob.y)/d;
+          const mag=(attract?90:-110)*dt; // px per second
+          ob.x=clamp(ob.x+nx*mag,0,br.width-BS);
+          ob.y=clamp(ob.y+ny*mag,0,br.height-BS);
+          ob.el.style.left=ob.x+'px';ob.el.style.top=ob.y+'px';
+        }}})}}
 // === UI ===
 function updateUI(){
 scE.textContent=score;
