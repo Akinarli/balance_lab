@@ -1,0 +1,27 @@
+{
+  "name": "ph-balance-lab",
+  "version": "1.0.0",
+  "description": "A fast-paced 2D puzzle game based on acid-base chemistry mechanics. Drag chemical blocks onto each other to create reactions while maintaining pH balance!",
+  "main": "make_icon.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Akinarli/balance_lab.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Akinarli/balance_lab/issues"
+  },
+  "homepage": "https://github.com/Akinarli/balance_lab#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0"
+  }
+}
