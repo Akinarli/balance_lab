@@ -668,6 +668,54 @@ if(pH<=0||pH>=14)setTimeout(()=>gameOver(),300);
 ai.lastPlayerAction=now;idleTime=0;idleW.style.display='none';
 if(combo>=3)ai.aggression=Math.min(1,ai.aggression+.05)}
 
+
+// === UI ===
+function updateUI(){
+scE.textContent=score;
+phpE.style.left=(pH/14*100)+'%';
+phvE.textContent='pH '+pH.toFixed(1);
+phvE.style.color=pH<7?'#ef4444':pH>7?'#3b82f6':'#22c55e';
+// Combo bar
+const pct=Math.max(0,comboDecay/COMBO_WINDOW*100);
+cfE.style.width=pct+'%';
+if(combo>=FEVER_THRESHOLD){cfE.style.background='var(--gold)';clE.style.color='var(--gold)'}
+else if(combo>=3){cfE.style.background='var(--purple)';clE.style.color='var(--purple)'}
+else{cfE.style.background='var(--neut)';clE.style.color='var(--neut)'}
+clE.textContent='x'+Math.max(1,combo);
+if(combo>=3)clE.style.transform='scale(1.2)';else clE.style.transform='scale(1)';
+// Board glow
+if(pH<=2)board.style.boxShadow='inset 0 0 50px rgba(239,68,68,.25)';
+else if(pH>=12)board.style.boxShadow='inset 0 0 50px rgba(59,130,246,.25)';
+else if(fever)board.style.boxShadow='inset 0 0 30px rgba(245,158,11,.12)';
+else board.style.boxShadow='';
+// Danger overlay
+if(pH<=1||pH>=13){dbrd.className='dng-'+(pH<=1?'a':'b')+' dng-crit'}
+else if(pH<=2){dbrd.className='dng-a'}
+else if(pH>=12){dbrd.className='dng-b'}
+else{dbrd.className='';dbrd.style.opacity='0'}}
+function gameOver(cause){if(isOver)return;isOver=true;sndGO();vib([200,100,200,100,400]);stopBGM();
+const isNewBest=score>best;
+if(isNewBest){best=score;localStorage.setItem('phLab2',String(best))}
+const titles={acid:'Acid Meltdown!',base:'Base Overload!',full:'Board Overflow!'}
+const subs={acid:'pH dropped to 0!',base:'pH hit 14!',full:'Too many blocks — lab exploded!'}
+const c2=cause||(pH<=0?'acid':'base');
+$('got').textContent=titles[c2]||'Game Over!';
+$('gosub').textContent=subs[c2]||'';
+$('gos').textContent=score;$('gotm').textContent=fmtTime(gameTime);
+$('goc').textContent='x'+maxCombo;$('gor').textContent=totalRx;
+goBest.style.display=isNewBest?'block':'none';
+goTip.textContent=best>0&&!isNewBest?'Best: '+best+' — beat it!':isNewBest?'You set a new record!':'';
+const s=score>=1500?'★★★':score>=600?'★★':score>0?'★':'☆';
+$('gostars').textContent=s;
+bfE.classList.remove('show');
+goE.classList.add('show')}
+
+// === GAME LOOP ===
+function loop(ts){
+if(isOver)return;
+const dt=lastFrame?Math.min((ts-lastFrame)/1000,.3):0;
+lastFrame=ts;gameTime+=dt;tmE.textContent=fmtTime(gameTime);
+
 // === PHYSICS ENGINE: MAGNETISM & DISTRIBUTION ===
 const br=board.getBoundingClientRect();
 const charges={H:1,Na:1,OH:-1,Cl:-1};
@@ -729,52 +777,6 @@ for(let i=0;i<blocks.length;i++){
     }
   }
 }
-// === UI ===
-function updateUI(){
-scE.textContent=score;
-phpE.style.left=(pH/14*100)+'%';
-phvE.textContent='pH '+pH.toFixed(1);
-phvE.style.color=pH<7?'#ef4444':pH>7?'#3b82f6':'#22c55e';
-// Combo bar
-const pct=Math.max(0,comboDecay/COMBO_WINDOW*100);
-cfE.style.width=pct+'%';
-if(combo>=FEVER_THRESHOLD){cfE.style.background='var(--gold)';clE.style.color='var(--gold)'}
-else if(combo>=3){cfE.style.background='var(--purple)';clE.style.color='var(--purple)'}
-else{cfE.style.background='var(--neut)';clE.style.color='var(--neut)'}
-clE.textContent='x'+Math.max(1,combo);
-if(combo>=3)clE.style.transform='scale(1.2)';else clE.style.transform='scale(1)';
-// Board glow
-if(pH<=2)board.style.boxShadow='inset 0 0 50px rgba(239,68,68,.25)';
-else if(pH>=12)board.style.boxShadow='inset 0 0 50px rgba(59,130,246,.25)';
-else if(fever)board.style.boxShadow='inset 0 0 30px rgba(245,158,11,.12)';
-else board.style.boxShadow='';
-// Danger overlay
-if(pH<=1||pH>=13){dbrd.className='dng-'+(pH<=1?'a':'b')+' dng-crit'}
-else if(pH<=2){dbrd.className='dng-a'}
-else if(pH>=12){dbrd.className='dng-b'}
-else{dbrd.className='';dbrd.style.opacity='0'}}
-function gameOver(cause){if(isOver)return;isOver=true;sndGO();vib([200,100,200,100,400]);stopBGM();
-const isNewBest=score>best;
-if(isNewBest){best=score;localStorage.setItem('phLab2',String(best))}
-const titles={acid:'Acid Meltdown!',base:'Base Overload!',full:'Board Overflow!'}
-const subs={acid:'pH dropped to 0!',base:'pH hit 14!',full:'Too many blocks — lab exploded!'}
-const c2=cause||(pH<=0?'acid':'base');
-$('got').textContent=titles[c2]||'Game Over!';
-$('gosub').textContent=subs[c2]||'';
-$('gos').textContent=score;$('gotm').textContent=fmtTime(gameTime);
-$('goc').textContent='x'+maxCombo;$('gor').textContent=totalRx;
-goBest.style.display=isNewBest?'block':'none';
-goTip.textContent=best>0&&!isNewBest?'Best: '+best+' — beat it!':isNewBest?'You set a new record!':'';
-const s=score>=1500?'★★★':score>=600?'★★':score>0?'★':'☆';
-$('gostars').textContent=s;
-bfE.classList.remove('show');
-goE.classList.add('show')}
-
-// === GAME LOOP ===
-function loop(ts){
-if(isOver)return;
-const dt=lastFrame?Math.min((ts-lastFrame)/1000,.3):0;
-lastFrame=ts;gameTime+=dt;tmE.textContent=fmtTime(gameTime);
 // Wave progression
 waveTime+=dt;
 if(waveTime>=45){waveTime=0;wave++;wvE.textContent=wave;
