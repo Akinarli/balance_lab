@@ -4,6 +4,7 @@
   "description": "A fast-paced 2D puzzle game based on acid-base chemistry mechanics. Drag chemical blocks onto each other to create reactions while maintaining pH balance!",
   "main": "make_icon.js",
   "scripts": {
+    "build": "mkdir -p public && cp index.html public/index.html && cp sw.js public/sw.js && cp manifest.json public/manifest.json && cp bgm.mp3 public/bgm.mp3 && cp icon.png public/icon.png",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
