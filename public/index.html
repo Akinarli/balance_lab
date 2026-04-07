@@ -687,8 +687,8 @@ if(drag.blk){
           // Anti-overlap: If exactly on top, push randomly outward
           if(d<5){nx=(Math.random()-.5)*2;ny=(Math.random()-.5)*2;}
           
-          // Max speeds: attract 45px/s (slower), repel 280px/s (strong push away)
-          const mag=(attract?45:-280)*curve*dt;
+          // Max speeds: attract 180px/s, repel 1200px/s (massive explosive push)
+          const mag=(attract?180:-1200)*curve*dt;
           
           ob.x=clamp(ob.x+nx*mag,0,br.width-BS);
           ob.y=clamp(ob.y+ny*mag,0,br.height-BS);
