@@ -668,39 +668,56 @@ if(pH<=0||pH>=14)setTimeout(()=>gameOver(),300);
 ai.lastPlayerAction=now;idleTime=0;idleW.style.display='none';
 if(combo>=3)ai.aggression=Math.min(1,ai.aggression+.05)}
 
-// === GLOBAL ELECTROSTATIC PHYSICS (N-BODY) ===
+// === PHYSICS ENGINE: MAGNETISM & OVERLAP PREVENTION ===
 const br=board.getBoundingClientRect();
 const charges={H:1,Na:1,OH:-1,Cl:-1};
+
+// 1. Drag Magnetism (Player Interaction)
+if(drag.blk){
+  const chA=charges[drag.blk.type]||0;
+  if(chA!==0){
+    blocks.forEach(ob=>{if(ob===drag.blk)return;
+      const chB=charges[ob.type]||0;
+      if(chB!==0){const d=Math.max(1,dist(drag.blk,ob));
+        if(d<160){
+          const attract=(chA*chB)<0;
+          const curve=Math.max(0,1-(d/160));
+          let nx=(drag.blk.x-ob.x)/d,ny=(drag.blk.y-ob.y)/d;
+          // attract: ob moves TOWARDS drag.blk (+nx)
+          // repel: ob moves AWAY FROM drag.blk (-nx)
+          const mag=(attract?160:-250)*curve*dt;
+          
+          ob.x=clamp(ob.x+nx*mag,0,br.width-BS);
+          ob.y=clamp(ob.y+ny*mag,0,br.height-BS);
+          ob.el.style.left=ob.x+'px';ob.el.style.top=ob.y+'px';
+        }
+      }
+    });
+  }
+}
+
+// 2. Global Overlap Prevention (Same charges NEVER stack)
 for(let i=0;i<blocks.length;i++){
   for(let j=i+1;j<blocks.length;j++){
     const b1=blocks[i],b2=blocks[j];
     const chA=charges[b1.type]||0, chB=charges[b2.type]||0;
-    if(chA!==0&&chB!==0){
-      const d=Math.max(1,dist(b1,b2));
-      if(d<160){
-        const attract=(chA*chB)<0;
-        const distFactor=Math.max(0,1-(d/160));
+    // Only repel if SAME charge and very close (< 65px since BS is 64)
+    if(chA!==0&&chA===chB){
+      const d=Math.max(0.1,dist(b1,b2));
+      if(d<65){
         let nx=(b1.x-b2.x)/d,ny=(b1.y-b2.y)/d;
-        if(d<5){nx=(Math.random()-.5)*2;ny=(Math.random()-.5)*2;}
+        if(d<2){nx=(Math.random()-.5)*2;ny=(Math.random()-.5)*2;} // Exact overlap fix
         
-        let force=0;
-        if(attract){
-           force=-70*distFactor*dt; // Gentle attract
-        }else{
-           let repelPower=400;
-           if(d<85) repelPower=2500; // Hard bounce when they try to touch
-           if(d<45) repelPower=9000; // Extreme bounce if perfectly overlapping
-           force=repelPower*distFactor*dt;
-        }
-        
+        // Push apart very fast (400px/s)
+        const repelForce=400*dt;
         if(drag.blk!==b1){
-          b1.x=clamp(b1.x+nx*force,0,br.width-BS);
-          b1.y=clamp(b1.y+ny*force,0,br.height-BS);
+          b1.x=clamp(b1.x+nx*repelForce,0,br.width-BS);
+          b1.y=clamp(b1.y+ny*repelForce,0,br.height-BS);
           b1.el.style.left=b1.x+'px';b1.el.style.top=b1.y+'px';
         }
         if(drag.blk!==b2){
-          b2.x=clamp(b2.x-nx*force,0,br.width-BS);
-          b2.y=clamp(b2.y-ny*force,0,br.height-BS);
+          b2.x=clamp(b2.x-nx*repelForce,0,br.width-BS);
+          b2.y=clamp(b2.y-ny*repelForce,0,br.height-BS);
           b2.el.style.left=b2.x+'px';b2.el.style.top=b2.y+'px';
         }
       }
