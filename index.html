@@ -674,13 +674,16 @@ if(drag.blk){
   const charges={H:1,Na:1,OH:-1,Cl:-1};
   const chA=charges[drag.blk.type]||0;
   if(chA!==0){
-    blocks.forEach(ob=>{if(ob===drag.blk||ob.el.classList.contains('idle'))return;
+    blocks.forEach(ob=>{if(ob===drag.blk)return;
       const chB=charges[ob.type]||0;
       if(chB!==0){const d=dist(drag.blk,ob);
-        if(d<160&&d>15){
+        if(d<180&&d>10){
           const attract=(chA*chB)<0;
+          // Physics: stronger interaction when closer
+          const distFactor=Math.max(0,1-(d/180));
           const nx=(drag.blk.x-ob.x)/d,ny=(drag.blk.y-ob.y)/d;
-          const mag=(attract?90:-110)*dt; // px per second
+          // Max speeds: attract 90px/s, repel 140px/s
+          const mag=(attract?90:-140)*distFactor*dt;
           ob.x=clamp(ob.x+nx*mag,0,br.width-BS);
           ob.y=clamp(ob.y+ny*mag,0,br.height-BS);
           ob.el.style.left=ob.x+'px';ob.el.style.top=ob.y+'px';
