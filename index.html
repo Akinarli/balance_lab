@@ -676,14 +676,20 @@ if(drag.blk){
   if(chA!==0){
     blocks.forEach(ob=>{if(ob===drag.blk)return;
       const chB=charges[ob.type]||0;
-      if(chB!==0){const d=dist(drag.blk,ob);
-        if(d<180&&d>10){
+      if(chB!==0){const d=Math.max(1,dist(drag.blk,ob));
+        if(d<160){
           const attract=(chA*chB)<0;
-          // Physics: stronger interaction when closer
-          const distFactor=Math.max(0,1-(d/180));
-          const nx=(drag.blk.x-ob.x)/d,ny=(drag.blk.y-ob.y)/d;
-          // Max speeds: attract 90px/s, repel 140px/s
-          const mag=(attract?90:-140)*distFactor*dt;
+          // Quadratic falloff: very strong close, very weak far away
+          const distFactor=Math.max(0,1-(d/160));
+          const curve=distFactor*distFactor;
+          
+          let nx=(drag.blk.x-ob.x)/d,ny=(drag.blk.y-ob.y)/d;
+          // Anti-overlap: If exactly on top, push randomly outward
+          if(d<5){nx=(Math.random()-.5)*2;ny=(Math.random()-.5)*2;}
+          
+          // Max speeds: attract 45px/s (slower), repel 280px/s (strong push away)
+          const mag=(attract?45:-280)*curve*dt;
+          
           ob.x=clamp(ob.x+nx*mag,0,br.width-BS);
           ob.y=clamp(ob.y+ny*mag,0,br.height-BS);
           ob.el.style.left=ob.x+'px';ob.el.style.top=ob.y+'px';
